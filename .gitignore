@@ -1,0 +1,17 @@
+*.out
+*.png
+*\asc*
+*\bin*
+*.dem
+*\stageloc*
+*\strmflow*
+*\input/extbc*
+*\input/runoff*
+*/NETCDFconvertor*
+*/ConfigGenerator*
+*output/cfg*
+*performance.txt
+# *build.txt*
+_data/*
+_troubleshooting/*
+doc
