@@ -5,7 +5,7 @@ constant_man_bool = True
 const_man = 0.035
 num_ext_bc = 0
 tstep_s = .01
-reporting_tstep_s = 30
+reporting_tstep_s = 60*5
 sim_dur_s = 216000
 #%% TRITON
 fldr_ornl_local = "D:/Dropbox/_GradSchool/_ORNL_internship/"
@@ -38,12 +38,15 @@ f_in_extbc_file = fldr_in_extbc + triton_model_name + ".extbc"
 
 if constant_man_bool == True:
     constant_man_bool_tmplt = ""
+    mann_file_toggle = "# "
 else:
     constant_man_bool_tmplt = "# "
+    mann_file_toggle = ""
 
 
 d_input = dict(DEM = f_in_dem, NUM_SOURCES = num_srcs, HYDROGRAPH = f_in_hydrograph, HYDO_SRC_LOC = f_in_hydro_src_loc,
                MANNINGS = f_in_mannings, CONST_MAN_BOOL = constant_man_bool_tmplt, 
+               MAN_FILE_TOGGLE = mann_file_toggle,
                CONST_MAN = const_man, NUM_EXT_BC = num_ext_bc, EXTBC_DIR = fldr_in_extbc,
                EXTBC_FILE = f_in_extbc_file, SIM_DUR_S = sim_dur_s, TSTEP_S = tstep_s, 
                REPORTING_TSTEP_S = reporting_tstep_s)
