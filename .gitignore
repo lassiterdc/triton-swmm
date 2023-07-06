@@ -17,3 +17,4 @@ _troubleshooting/*
 doc
 */_archive*
 */_scratch*
+*.nc
