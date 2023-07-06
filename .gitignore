@@ -18,3 +18,5 @@ doc
 *archive*
 */_scratch*
 *.nc
+*.pyc
+python/__pycache__/__filepaths.cpython-38.pyc
