@@ -33,12 +33,25 @@ rds_dem = rxr.open_rasterio(f_dem_raw)
 
 #%% working with dem
 with rio.open(f_dem_raw) as dem_src:
-    lidar_dem = dem_src.read(1, masked=False)
+    lidar_dem = dem_src.read(1, masked=False) 
     lidar_dem_meta = dem_src.profile
 
-ep.plot_bands(lidar_dem,
-              title="Lidar Digital Elevation Model (DEM)",
-              cmap="Greys")
+fig, ax = plt.subplots()
+
+# ep.plot_bands(lidar_dem,
+#               title="Lidar Digital Elevation Model (DEM)",
+#               cmap="Greys",
+#               ax = ax)
+
+rds_dem.plot(ax = ax)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+
+gdf_nodes.plot(ax = ax)
+
+ax.set_xlim(xlim)
+ax.set_ylim(ylim)
 
 plt.show()
 

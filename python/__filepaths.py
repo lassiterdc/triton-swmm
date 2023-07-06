@@ -72,7 +72,7 @@ f_outfls = fldr_shps + "outfalls.shp"
 
 # DEM
 # fldr_triton_hpc_data = fldr_triton_hpc + "_data/"
-f_dem_raw = fldr_triton_local_data + "lidar_usgs_2013_voidfill_clipped.tif"
+f_dem_raw = fldr_triton_local_data + "dem_with_buildings.tif"
 f_dem_processed = fldr_triton_local + "input/dem/asc/" + triton_model_name + ".dem"
 #%% constants
 cubic_feet_per_cubic_meter = 35.3147
