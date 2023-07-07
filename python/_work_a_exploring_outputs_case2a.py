@@ -11,7 +11,7 @@ from pathlib import Path
 case_id = "case03"
 
 #%% defining input filepaths
-dem = fldr_in_dem_asc + case_id + ".dem"
+dem = 'D:/Dropbox/_GradSchool/_ORNL_internship/triton-master/' + fldr_in_dem_asc + case_id + ".dem"
 
 #%% defining output filepaths
 lst_f_out_h = glob(fldr_out_asc + "H*")
@@ -32,8 +32,17 @@ ds_dem.plot(ax = ax)
 ax.set_title("Input DEM for case {}".format(case_id))
 
 #%% inspecting outputs
-lst_ds_h = []
+lst_tsteps = [] 
 for f in lst_f_out_h:
+    lst_tsteps.append(int(f.split("H_")[-1].split(".")[0].split("_")[0]))
+
+df_files = pd.DataFrame(dict(timestep_min = lst_tsteps, files = lst_f_out_h))
+
+df_files = df_files.sort_values("timestep_min")
+
+lst_ds_h = []
+
+for f in df_files.files:
     df = pd.read_csv(f, sep = ' ', header = None)
     df.columns = x
     df = df.set_index(y)
@@ -58,7 +67,7 @@ from matplotlib import pyplot as plt, animation
 from IPython.display import HTML, display
 
 # test
-fldr_plt = "_scratch/"
+fldr_plt = "D:/Dropbox/_GradSchool/_ORNL_internship/triton-swmm/python/_scratch/"
 p = Path(fldr_plt)
 p.mkdir(parents=True, exist_ok=True)
 
