@@ -1,12 +1,12 @@
 #%% key user defined inputs
 triton_model_name = "norfolk_test"
-num_srcs = 1133 # corresponds to the num of nodes the swmm model
+num_srcs = 185 # corresponds to the num of nodes with flooding in the SWMM model
 constant_man_bool = True
 const_man = 0.035
 num_ext_bc = 0
 tstep_s = .01
 reporting_tstep_s = 60*5
-sim_dur_s = 216000
+sim_dur_s = 30 * 60 * 60 # 30 hours
 #%% TRITON
 fldr_ornl_local = "D:/Dropbox/_GradSchool/_ORNL_internship/"
 fldr_triton_local = fldr_ornl_local + "triton-swmm/"
@@ -54,6 +54,7 @@ d_input = dict(DEM = f_in_dem, NUM_SOURCES = num_srcs, HYDROGRAPH = f_in_hydrogr
 # output paths
 fldr_outputs = fldr_triton_local + "output/"
 fldr_out_asc = fldr_outputs + "asc/"
+fldr_out_bin2ascii = fldr_outputs + "bin2ascii/"
 
 #%% additional data
 # SWMM
@@ -75,4 +76,6 @@ f_outfls = fldr_shps + "outfalls.shp"
 f_dem_raw = fldr_triton_local_data + "dem_with_buildings.tif"
 f_dem_processed = fldr_triton_local + "input/dem/asc/" + triton_model_name + ".dem"
 #%% constants
-cubic_feet_per_cubic_meter = 35.3147
+meters_per_foot = 0.3048
+square_meters_per_square_foot = meters_per_foot * meters_per_foot
+cubic_meters_per_cubic_foot = meters_per_foot*meters_per_foot*meters_per_foot
