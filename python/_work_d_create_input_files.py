@@ -62,18 +62,18 @@ plt.show()
 
 
 #%% create dem file
-df_dem = pd.DataFrame(lidar_dem)
+df_dem = pd.DataFrame(lidar_dem) * meters_per_foot # in meters
 
 fillna_val = -9999
 
 df_dem = df_dem.fillna(fillna_val)
 
-cellsize = 3
+cellsize = 3 * meters_per_foot # 3 feet to meters
 
 input_dem_metadata = {"ncols         ":df_dem.shape[1],
                           "nrows         ":df_dem.shape[0], 
-                          "xllcorner     ":rds_dem.x.values.min() - cellsize/2,
-                          "yllcorner     ":rds_dem.y.values.min() - cellsize/2,
+                          "xllcorner     ":rds_dem.x.values.min() - cellsize/2 * meters_per_foot, # in meters
+                          "yllcorner     ":rds_dem.y.values.min() - cellsize/2 * meters_per_foot, # in meters
                           "cellsize      ":cellsize,
                           "NODATA_value  ":fillna_val}
 
@@ -106,6 +106,8 @@ df_dem_padded.to_csv(f_dem_processed, mode = "a", index = False, header=False, s
 first_line = "%Norfolk Storm Sewer Flooding\n"
 second_line = "%Time(hr) Discharge(cms)\n"
 
+lst_nodes_with_flooding = []
+
 d_flooding_time_series = dict()
 count = -1
 with Output(f_out) as out:
@@ -118,35 +120,36 @@ with Output(f_out) as out:
             tseries.loc[0] = 0
             d_flooding_time_series["time_hr"] = tseries.cumsum().values
 
-        # convert from cfs to cf per tstep then cubic meters per timestep
-        d_t_series = d_t_series * tstep_seconds * cubic_feet_per_cubic_meter
+        # convert from cfs to cms
+        d_t_series = d_t_series * cubic_meters_per_cubic_foot
+        if d_t_series.sum() > 0:
+            lst_nodes_with_flooding.append(key)
+            d_flooding_time_series[key] = d_t_series.values
         # sum all flooded volumes and append lists
         # lst_tot_node_flding.append(d_t_series.sum())
-        d_flooding_time_series[key] = d_t_series.values
-
-
-
+        
 
 df_node_flooding = pd.DataFrame(d_flooding_time_series)
-f = open(f_in_hydrograph, "w")
+f = open(fldr_triton_local + f_in_hydrograph, "w")
 f.write(first_line + second_line)
 f.close()
-df_node_flooding.to_csv(f_in_hydrograph, mode = "a", index = False, header=False)
+df_node_flooding.to_csv(fldr_triton_local + f_in_hydrograph, mode = "a", index = False, header=False)
 #%%
 
 
 #%% create hydrograph files
 # ensure the xy locations ROW aligns with the hydrograph COLUMN
 hydrograph_col_order = df_node_flooding.columns[1:]
+
 gdf_nodes = gdf_nodes.set_index("NAME").loc[hydrograph_col_order].reset_index(names="NAME")
 
 str_first_line = "%X-Location,Y-Location"
 
-f = open(f_in_hydro_src_loc, "w")
+f = open(fldr_triton_local + f_in_hydro_src_loc, "w")
 f.write(str_first_line + "\n")
 
 for geom in gdf_nodes.geometry:
-    x = geom.x
-    y = geom.y
+    x = geom.x * meters_per_foot # in meters
+    y = geom.y * meters_per_foot # in meters
     f.write("{},{}\n".format(x, y))
 f.close()
