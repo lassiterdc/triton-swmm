@@ -72,8 +72,8 @@ cellsize = 3 * meters_per_foot # 3 feet to meters
 
 input_dem_metadata = {"ncols         ":df_dem.shape[1],
                           "nrows         ":df_dem.shape[0], 
-                          "xllcorner     ":rds_dem.x.values.min() - cellsize/2 * meters_per_foot, # in meters
-                          "yllcorner     ":rds_dem.y.values.min() - cellsize/2 * meters_per_foot, # in meters
+                          "xllcorner     ":rds_dem.x.values.min() * meters_per_foot - cellsize/2, # in meters
+                          "yllcorner     ":rds_dem.y.values.min() * meters_per_foot- cellsize/2, # in meters
                           "cellsize      ":cellsize,
                           "NODATA_value  ":fillna_val}
 
@@ -153,3 +153,15 @@ for geom in gdf_nodes.geometry:
     y = geom.y * meters_per_foot # in meters
     f.write("{},{}\n".format(x, y))
 f.close()
+
+#%% verifying that all nodes are within the DEM
+xllcorner = rds_dem.x.values.min() * meters_per_foot - cellsize/2 # in meters
+yllcorner = rds_dem.y.values.min() * meters_per_foot- cellsize/2 # in meters
+
+df_xylocs = pd.read_csv(fldr_triton_local + f_in_hydro_src_loc, header=0, names = ["x", "y"])
+
+if df_xylocs.x.min() < xllcorner:
+    print("problem with x's")
+
+if df_xylocs.y.min() < yllcorner:
+    print("problem with y's")
