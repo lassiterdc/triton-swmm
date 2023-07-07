@@ -18,12 +18,13 @@
 # A note on the number of GPU devices (line 2, can be 1-8) and the number of MPI ranks (line 3).
 # It is usually recommended that the two should be identical
 
-# To request more GPUs you’ll need to request more nodes, e.g.:
+# To request more GPUs youï¿½ll need to request more nodes, e.g.:
 # #SBATCH -N 2
 #  We only have 12 A100 nodes in total right now, and to prevent any single user from dominating the queue we impose a limit of 32 GPUs per job.
 
 # interactive job: ijob -c 1 -A quinnlab_paid -p gpu --time=0-04:00:00 --gres=gpu:a100:1
 
+module purge
 module load nvompic
 make clean && make hpc_gpu
 

@@ -22,7 +22,7 @@
 #  We only have 12 A100 nodes in total right now, and to prevent any single user from dominating the queue we impose a limit of 32 GPUs per job.
 
 # interactive job: ijob -c 1 -A quinnlab_paid -p gpu --time=0-04:00:00 --gres=gpu:a100:1
-
+module purge
 module load nvompic
 
 # to run the model: 
