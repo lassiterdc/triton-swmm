@@ -154,11 +154,15 @@ for geom in gdf_nodes.geometry:
     f.write("{},{}\n".format(x, y))
 f.close()
 
-#%% verifying that all nodes are within the DEM
+# verifying that all nodes are within the DEM
 xllcorner = rds_dem.x.values.min() * meters_per_foot - cellsize/2 # in meters
 yllcorner = rds_dem.y.values.min() * meters_per_foot- cellsize/2 # in meters
 
 df_xylocs = pd.read_csv(fldr_triton_local + f_in_hydro_src_loc, header=0, names = ["x", "y"])
+
+
+# print("min x node: {}, min x DEM: {}".format(df_xylocs.x.min(), xllcorner))
+# print("min y node: {}, min y DEM: {}".format(df_xylocs.y.min(), yllcorner))
 
 if df_xylocs.x.min() < xllcorner:
     print("problem with x's")
