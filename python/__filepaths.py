@@ -66,16 +66,23 @@ f_inp = fldr_swmm + model_name + ".inp"
 f_out = fldr_swmm + model_name + ".out"
 
 # swmm entities 
-fldr_shps = fldr_swmm + "exported_layers/"
-f_jxns = fldr_shps + "junctions.shp"
-f_strg = fldr_shps + "storages.shp"
-f_outfls = fldr_shps + "outfalls.shp"
+# fldr_shps = fldr_swmm + "exported_layers/"
+# f_jxns = fldr_shps + "junctions.shp"
+# f_strg = fldr_shps + "storages.shp"
+# f_outfls = fldr_shps + "outfalls.shp"
+# f_subs = fldr_shps + "subcatchments.shp"
+f_imagery = fldr_triton_local_data + "imagery.tif"
+f_nodes = fldr_triton_local_data + "nodes.shp"
+f_watershed = fldr_triton_local_data + "watershed.shp"
 
 # DEM
 # fldr_triton_hpc_data = fldr_triton_hpc + "_data/"
-f_dem_raw = fldr_triton_local_data + "dem_with_buildings.tif"
+f_dem_raw = fldr_triton_local_data + "dem_for_triton.tif"
 f_dem_processed = fldr_triton_local + "input/dem/asc/" + triton_model_name + ".dem"
 #%% constants
 meters_per_foot = 0.3048
 square_meters_per_square_foot = meters_per_foot * meters_per_foot
 cubic_meters_per_cubic_foot = meters_per_foot*meters_per_foot*meters_per_foot
+
+#%% other directories
+fldr_plt = "plots/"
