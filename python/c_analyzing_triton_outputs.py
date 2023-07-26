@@ -15,7 +15,25 @@ import shutil
 case_id = "norfolk_test"
 
 fldr_temp_netcdfs = fldr_scratch + "tmp_netcdfs/"
-# %%
+#%% defining functions for reading binary outputs
+HEADER = 2
+
+def read_binary_matrix(filepath):
+    with open(filepath, "rb") as file:
+        dim_arr = np.fromfile(file, dtype=np.float64, count=HEADER)
+        nrows, ncols = dim_arr.astype(np.int32)
+
+        arr = np.fromfile(file, dtype=np.float64, count=nrows * ncols)
+
+    return nrows, ncols, arr.reshape(nrows, ncols)
+
+def plot_matrix(matrix):
+    plt.imshow(matrix, cmap="viridis", interpolation="nearest")
+    plt.colorbar()
+    plt.title("Matrix Visualization")
+    plt.xlabel("Columns")
+    plt.ylabel("Rows")
+    plt.show()
 
 #%% defining input filepaths
 dem = fldr_triton_local + fldr_in_dem_asc + case_id + ".dem"
@@ -23,11 +41,11 @@ dem = fldr_triton_local + fldr_in_dem_asc + case_id + ".dem"
 # %%
 
 #%% defining output filepaths
-lst_f_out_h = glob(fldr_out_asc + "H*")
+lst_f_out_h = glob(fldr_outputs + "H*")
 
-lst_f_out_mh = glob(fldr_out_asc + "MH*")
+lst_f_out_mh = glob(fldr_outputs + "MH*")
 
-lst_f_out_qxy = glob(fldr_out_asc + "Q*")
+# lst_f_out_qxy = glob(fldr_outputs + "Q*")
 
 # %% loading nodes
 gdf_nodes = gpd.read_file(f_nodes).loc[:, ["NAME", "geometry"]]
@@ -38,9 +56,9 @@ gdf_wshed = gpd.read_file(f_watershed)
 ds_dem = rxr.open_rasterio(dem)
 
 x = ds_dem.x.values
-x.sort()
+# x.sort()
 y = ds_dem.y.values
-y.sort()
+# y.sort()
 
 fig, ax = plt.subplots(dpi = 300)
 
@@ -64,18 +82,26 @@ p.mkdir(parents=True, exist_ok=True)
 
 # lst_ds_h = []
 # for f in tqdm(df_files.files):
-for ind, row in tqdm(df_files.iterrows()):
-    f = row.files
-    tstep = row.tstep
-    df = pd.read_csv(f, sep = ' ', header = None)
-    df.columns = x
-    df = df.set_index(y)
-    df = pd.melt(df, ignore_index=False, var_name = "x", value_name="H").reset_index(names = "y")
-    df["timestep"] = tstep
-    df = df.set_index(["y", "x", "timestep"])
-    df = df.replace(0, np.nan) # replace 0 with nan so it doesn't appear in the plots
-    ds = df.to_xarray()
-    ds.to_netcdf(fldr_temp_netcdfs + "{}_h.nc".format(tstep), encoding= {"H":{"zlib":True}})
+if output_type == "bin":
+    for ind, row in tqdm(df_files.iterrows()):
+        f = row.files
+        tstep = row.tstep
+        with open(f, mode='rb') as file: # b is important -> binary
+            fileContent = file.read()
+            # print(fileContent)
+if output_type == "asc":
+    for ind, row in tqdm(df_files.iterrows()):
+        f = row.files
+        tstep = row.tstep
+        df = pd.read_csv(f, sep = ' ', header = None)
+        df.columns = x
+        df = df.set_index(y)
+        df = pd.melt(df, ignore_index=False, var_name = "x", value_name="H").reset_index(names = "y")
+        df["timestep"] = tstep
+        df = df.set_index(["y", "x", "timestep"])
+        df = df.replace(0, np.nan) # replace 0 with nan so it doesn't appear in the plots
+        ds = df.to_xarray()
+        ds.to_netcdf(fldr_temp_netcdfs + "{}_h.nc".format(tstep), encoding= {"H":{"zlib":True}})
 
     # lst_ds_h.append(ds)
 #%%
@@ -146,7 +172,6 @@ ani.save(fldr_plt + '{}_H_animation.mp4'.format(case_id))
 #%% trying to understand the discontinuities
 ds_h.H.isel(dict(x=300, y = 300)).plot()
 plt.savefig(fldr_plt + "{}_inspecting_timeseries_for_single_cell.png".format(case_id))
-0
 #%% plotting maximum water level
 lst_tsteps = [] 
 for f in lst_f_out_mh:
@@ -160,7 +185,7 @@ df_max_wlevel = pd.read_csv(f_max_wlevel, sep = ' ', header = None)
 df_max_wlevel.columns = x
 df_max_wlevel = df_max_wlevel.set_index(y)
 df_max_wlevel = pd.melt(df_max_wlevel, ignore_index=False, var_name = "x", value_name="max_wlevel_m").reset_index(names = "y")
-df_max_wlevel = df_max_wlevel.set_index(["y", "x"])
+df_max_wlevel = df_max_wlevel.set_index(["x", "y"])
 df_max_wlevel = df_max_wlevel.replace(0, np.nan)
 ds_max_wlevel = df_max_wlevel.to_xarray()
 
@@ -171,10 +196,10 @@ ds_max_wlevel.max_wlevel_m.attrs["long_name"] ="maximum water depth"
 #%%
 fig, ax = plt.subplots()
 
-ds_max_wlevel.max_wlevel_m.plot(ax = ax, vmin=0, zorder = 10)
+ds_max_wlevel.max_wlevel_m.plot(x="x", y = "y", ax = ax, vmin=0, zorder = 10)
 
 # gdf_nodes.plot(ax=ax, markersize = 5, zorder = 11, color = "none", edgecolor = "none")
 
-gdf_wshed.plot(ax=ax, edgecolor = "none", color = 'grey', alpha = 0.2, zorder = 1)
+gdf_wshed.plot(ax=ax, edgecolor = "black", color = 'none', alpha = 0.2, zorder = 1)
 
 plt.savefig(fldr_plt + "{}_maximum_waterlevel.png".format(case_id))
