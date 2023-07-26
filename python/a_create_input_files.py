@@ -20,11 +20,12 @@ from __filepaths import *
 
 #%% load data
 gdf_nodes = gpd.read_file(f_nodes).loc[:, ["NAME", "geometry"]]
-
-rds_dem_with_gaps = rxr.open_rasterio(f_dem_raw)
+gdf_bc = gpd.read_file(f_shp_bndry_cond)
+rds_dem = rxr.open_rasterio(f_dem_raw)
 
 # fill gaps in dem
-rds_dem_inteprolated = rds_dem_with_gaps.rio.interpolate_na(method = "nearest")
+if (rds_dem.values<-100).sum() > 0:
+    rds_dem = rds_dem.rio.interpolate_na(method = "nearest")
 #%% working with dem
 with rio.open(f_dem_raw) as dem_src:
     lidar_dem = dem_src.read(1, masked=False) 
@@ -32,7 +33,7 @@ with rio.open(f_dem_raw) as dem_src:
 
 fig, ax = plt.subplots()
 
-rds_dem_inteprolated.plot(ax = ax, vmin = rds_dem_inteprolated.min().values, vmax = rds_dem_inteprolated.max().values)
+rds_dem.plot(ax = ax, vmin = rds_dem.min().values, vmax = rds_dem.max().values)
 
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
@@ -55,17 +56,17 @@ fillna_val = -9999
 
 # df_dem = df_dem.fillna(fillna_val)
 
-cellsize_x = pd.DataFrame(np.unique(np.diff(rds_dem_inteprolated.x.values), return_counts = True)).T
-cellsize_y = pd.DataFrame(np.unique(np.diff(rds_dem_inteprolated.y.values), return_counts = True)).T
+cellsize_x = pd.DataFrame(np.unique(np.diff(rds_dem.x.values), return_counts = True)).T
+cellsize_y = pd.DataFrame(np.unique(np.diff(rds_dem.y.values), return_counts = True)).T
 
 cellsize_x.columns = ["diff", "count"]
 
 cellsize = cellsize_x["diff"][cellsize_x["count"].idxmax()]
 
-input_dem_metadata = {"ncols         ":rds_dem_inteprolated.x.shape[0],
-                          "nrows         ":rds_dem_inteprolated.y.shape[0], 
-                          "xllcorner     ":rds_dem_inteprolated.x.values.min(),
-                          "yllcorner     ":rds_dem_inteprolated.y.values.min(),
+input_dem_metadata = {"ncols         ":rds_dem.x.shape[0],
+                          "nrows         ":rds_dem.y.shape[0], 
+                          "xllcorner     ":rds_dem.x.values.min() - cellsize/2, # adjusted from center to corner
+                          "yllcorner     ":rds_dem.y.values.min() - cellsize/2, # adjusted from center to corner
                           "cellsize      ":cellsize,
                           "NODATA_value  ":fillna_val}
 
@@ -81,7 +82,7 @@ f.close()
 
 
 # create dataframe with the right shape
-df_dem_long = rds_dem_inteprolated.to_dataframe("elevation").reset_index().loc[:, ["x", "y", "elevation"]]
+df_dem_long = rds_dem.to_dataframe("elevation").reset_index().loc[:, ["x", "y", "elevation"]]
 df_dem = df_dem_long.pivot(index = "y", columns = "x", values = "elevation")
 
 # ensure the x and y values are ordered properly
@@ -105,12 +106,16 @@ df_dem_padded = df_dem.apply(flt_to_str_certain_num_of_characters)
 df_dem_padded.to_csv(f_dem_processed, mode = "a", index = False, header=False, sep=" ", float_format = "{:10.4f}")
 
 #%% create hydrograph time series files
-first_line = "%Norfolk Storm Sewer Flooding\n"
-second_line = "%Time(hr) Discharge(cms)\n"
+flding_first_line = "%Norfolk Storm Sewer Flooding\n"
+flding_second_line = "%Time(hr) Discharge(cms)\n"
+
+wlevel_first_line = "%Norfolk Water Level Boundary Condition\n"
+wlevel_second_line = "%Time(hr) water_elevation (m)\n"
 
 lst_nodes_with_flooding = []
 
 d_flooding_time_series = dict()
+d_wlevel_time_series = dict()
 count = -1
 with Output(f_out) as out:
     for key in out.nodes:
@@ -127,15 +132,29 @@ with Output(f_out) as out:
         if d_t_series.sum() > 0:
             lst_nodes_with_flooding.append(key)
             d_flooding_time_series[key] = d_t_series.values
+
+        if key == "E147007": #outfall node
+            d_t_series = pd.Series(out.node_series(key, NodeAttribute.HYDRAULIC_HEAD)) # feet
+            tstep_seconds = float(pd.Series(d_t_series.index).diff().mode().dt.seconds)
+            tseries = pd.Series(d_t_series.index).diff().dt.seconds / 60 / 60
+            tseries.loc[0] = 0
+            d_wlevel_time_series["time_hr"] = tseries.cumsum().values
+            d_wlevel_time_series["water_level_m"] = (d_t_series * meters_per_foot).values
         # sum all flooded volumes and append lists
         # lst_tot_node_flding.append(d_t_series.sum())
         
 
 df_node_flooding = pd.DataFrame(d_flooding_time_series)
 f = open(fldr_triton_local + f_in_hydrograph, "w")
-f.write(first_line + second_line)
+f.write(flding_first_line + flding_second_line)
 f.close()
 df_node_flooding.to_csv(fldr_triton_local + f_in_hydrograph, mode = "a", index = False, header=False)
+
+df_waterlevel = pd.DataFrame(d_wlevel_time_series)
+f = open(fldr_triton_local + f_in_extbc_wlevel, "w")
+f.write(wlevel_first_line + wlevel_second_line)
+f.close()
+df_waterlevel.to_csv(fldr_triton_local + f_in_extbc_wlevel, mode = "a", index = False, header=False)
 #%% create hydrograph files
 # ensure the xy locations ROW aligns with the hydrograph COLUMN
 hydrograph_col_order = df_node_flooding.columns[1:]
@@ -154,8 +173,8 @@ for geom in gdf_nodes.geometry:
 f.close()
 
 # verifying that all nodes are within the DEM
-xllcorner = rds_dem_inteprolated.x.values.min()
-yllcorner = rds_dem_inteprolated.y.values.min()
+xllcorner = rds_dem.x.values.min()
+yllcorner = rds_dem.y.values.min()
 
 df_xylocs = pd.read_csv(fldr_triton_local + f_in_hydro_src_loc, header=0, names = ["x", "y"])
 
@@ -167,3 +186,52 @@ if df_xylocs.x.min() < xllcorner:
 
 if df_xylocs.y.min() < yllcorner:
     print("problem with y's")
+
+#%% create external boundary condition file
+str_line1 = "% BC Type, X1, Y1, X2, Y2, BC"
+
+def extract_vertex_coordinates(geometry):
+    # Ensure the geometry is a LineString or MultiLineString
+    if geometry.geom_type in ['LineString', 'MultiLineString']:
+        return list(geometry.coords)
+    else:
+        return None
+    
+gdf_bc['vertices'] = gdf_bc['geometry'].apply(extract_vertex_coordinates)
+
+lst_x = []
+lst_y = []
+for geom in gdf_bc.vertices:
+    for vertex in geom:
+        # print(vertex)
+        lst_x.append(vertex[0])
+        lst_y.append(vertex[1])
+
+# find x and ys at edge of DEM representing the boundary condition
+min_x = min(lst_x)
+min_y = min(lst_y)
+max_x = max(lst_x)
+max_y = max(lst_y)
+
+def find_closest_dem_coord(x_val, y_val, BC_side):
+    if BC_side == "left":
+        dem_xs = rds_dem.x.values - cellsize/2
+        x_coord = min(dem_xs)
+
+        dem_ys = rds_dem.y.values
+        y_coord = dem_ys[np.argmin(np.abs(dem_ys - y_val))]
+    else:
+        import sys
+        sys.exit("boundary condition location not defined")
+    return x_coord, y_coord
+
+x1, y1 = find_closest_dem_coord(min_x, min_y, BC_side)
+x2, y2 = find_closest_dem_coord(max_x, max_y, BC_side)
+
+str_line2 = "{},{},{},{},{},{}".format(BC_type, x1, y1, x2, y2, BC)
+
+# write file
+f = open(fldr_triton_local + f_in_extbc_file, "w")
+f.write(str_line1 + "\n")
+f.write(str_line2 + "\n")
+f.close()
