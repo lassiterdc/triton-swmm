@@ -3,10 +3,17 @@ triton_model_name = "norfolk_test"
 num_srcs = 185 # corresponds to the num of nodes with flooding in the SWMM model
 constant_man_bool = True
 const_man = 0.035
-num_ext_bc = 0
+num_ext_bc = 1 # one external boundary condition
 tstep_s = .01
 reporting_tstep_s = 60*5
 sim_dur_s = 30 * 60 * 60 # 30 hours
+output_type = "asc"
+
+fldr_scratch = "_scratch/"
+
+BC = "level.txt"
+BC_type = 1 # corresponding to level versus time (https://triton.ornl.gov/documentation/#other-tools)
+BC_side = "left"
 #%% TRITON
 fldr_ornl_local = "D:/Dropbox/_GradSchool/_ORNL_internship/"
 fldr_triton_local = fldr_ornl_local + "triton-swmm/"
@@ -35,6 +42,7 @@ f_in_hydrograph = fldr_in_strmflow + triton_model_name + ".hyg"
 f_in_hydro_src_loc = fldr_in_strmflow + triton_model_name + ".txt"
 f_in_mannings = fldr_in_mann + triton_model_name + ".mann"
 f_in_extbc_file = fldr_in_extbc + triton_model_name + ".extbc"
+f_in_extbc_wlevel = fldr_in_extbc + BC
 
 if constant_man_bool == True:
     constant_man_bool_tmplt = ""
@@ -52,9 +60,10 @@ d_input = dict(DEM = f_in_dem, NUM_SOURCES = num_srcs, HYDROGRAPH = f_in_hydrogr
                REPORTING_TSTEP_S = reporting_tstep_s)
 
 # output paths
-fldr_outputs = fldr_triton_local + "output/"
-fldr_out_asc = fldr_outputs + "asc/"
-fldr_out_bin2ascii = fldr_outputs + "bin2ascii/"
+fldr_outputs = fldr_triton_local + "output/{}/".format(output_type) 
+# fldr_out_asc = fldr_outputs + "asc/"
+# fldr_out_bin = fldr_outputs + "bin/"
+# fldr_out_bin2ascii = fldr_outputs + "bin2ascii/"
 
 #%% additional data
 # SWMM
@@ -74,6 +83,8 @@ f_out = fldr_swmm + model_name + ".out"
 f_imagery = fldr_triton_local_data + "imagery.tif"
 f_nodes = fldr_triton_local_data + "nodes.shp"
 f_watershed = fldr_triton_local_data + "watershed.shp"
+
+f_shp_bndry_cond = fldr_triton_local_data + "variable_bc.shp" # line
 
 # DEM
 # fldr_triton_hpc_data = fldr_triton_hpc + "_data/"
