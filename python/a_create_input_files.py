@@ -188,7 +188,7 @@ if df_xylocs.y.min() < yllcorner:
     print("problem with y's")
 
 #%% create external boundary condition file
-rds_dem = rxr.open_rasterio(f_dem_processed)
+rds_dem = rxr.open_rasterio(f_dem_processed) # places coordinates at the center of each cell
 
 str_line1 = "% BC Type, X1, Y1, X2, Y2, BC"
 
@@ -217,7 +217,7 @@ max_y = max(lst_y)
 
 def find_closest_dem_coord(x_val, y_val, BC_side):
     if BC_side == "left":
-        dem_xs = rds_dem.x.values - cellsize/2
+        dem_xs = rds_dem.x.values # + cellsize/2
         x_coord = min(dem_xs)
 
         dem_ys = rds_dem.y.values
@@ -225,12 +225,22 @@ def find_closest_dem_coord(x_val, y_val, BC_side):
     else:
         import sys
         sys.exit("boundary condition location not defined")
+
+    if (x_coord < min(dem_xs)) or (x_coord > max(dem_xs)):
+        sys.exit("This x coordinate falls outside the domain of the DEM")
+
+    if (y_coord < min(dem_ys)) or (y_coord > max(dem_ys)):
+        sys.exit("This y coordinate falls outside the domain of the DEM")
+    
     return x_coord, y_coord
 
 x1, y1 = find_closest_dem_coord(min_x, min_y, BC_side)
 x2, y2 = find_closest_dem_coord(max_x, max_y, BC_side)
 
-str_line2 = "{},{},{},{},{},{}".format(BC_type, x1, y1, x2, y2, BC)
+
+BC_with_quotes = "\"{}\"".format(BC)
+
+str_line2 = "{},{},{},{},{},{}".format(BC_type, x1, y1, x2, y2, BC_with_quotes)
 
 # write file
 f = open(fldr_triton_local + f_in_extbc_file, "w")
