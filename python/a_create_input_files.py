@@ -188,6 +188,8 @@ if df_xylocs.y.min() < yllcorner:
     print("problem with y's")
 
 #%% create external boundary condition file
+rds_dem = rxr.open_rasterio(f_dem_processed)
+
 str_line1 = "% BC Type, X1, Y1, X2, Y2, BC"
 
 def extract_vertex_coordinates(geometry):
