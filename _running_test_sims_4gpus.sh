@@ -33,6 +33,6 @@ echo "running script..."
 if [ ${SLURM_ARRAY_TASK_ID} = 9 ]
 then
   echo "running norfolk_test.cfg"
-  srun ./build/triton input/cfg/norfolk_test.cfg
+  srun ./build/triton input/cfg/norfolk_test.cfg -n 4
   echo "finished running norfolk_test.cfg"
 fi
