@@ -16,10 +16,10 @@ BC_type = 1 # corresponding to level versus time (https://triton.ornl.gov/docume
 BC_side = "left"
 #%% TRITON
 fldr_ornl_local = "D:/Dropbox/_GradSchool/_ORNL_internship/"
-fldr_triton_local = fldr_ornl_local + "triton-swmm/"
+fldr_triton_local = fldr_ornl_local + "triton-swmm_loose/"
 
 fldr_ornl_hpc = "/project/quinnlab/dcl3nd/TRITON/"
-fldr_triton_hpc = fldr_ornl_hpc + "triton/"
+fldr_triton_hpc = fldr_ornl_hpc + "triton-swmm_loose/"
 
 # input paths
 fldr_inputs = "input/"
