@@ -11,6 +11,7 @@
 */ConfigGenerator*
 *output/cfg*
 *performance.txt
+*.gif
 # *build.txt*
 _data/*
 _troubleshooting/*
