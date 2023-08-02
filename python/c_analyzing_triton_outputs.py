@@ -40,19 +40,18 @@ dem = fldr_triton_local + fldr_in_dem_asc + case_id + ".dem"
 
 # %%
 
-#%% defining output filepaths
+#%% loading data
+# defining output filepaths
 lst_f_out_h = glob(fldr_outputs + "H*")
 
 lst_f_out_mh = glob(fldr_outputs + "MH*")
 
-# lst_f_out_qxy = glob(fldr_outputs + "Q*")
-
-# %% loading nodes
+# loading nodes
 gdf_nodes = gpd.read_file(f_nodes).loc[:, ["NAME", "geometry"]]
 
 gdf_wshed = gpd.read_file(f_watershed)
 
-#%% inspecting inputs
+# loading dem
 ds_dem = rxr.open_rasterio(dem)
 
 x = ds_dem.x.values
@@ -60,13 +59,14 @@ x = ds_dem.x.values
 y = ds_dem.y.values
 # y.sort()
 
+#%% inspecting DEM
 fig, ax = plt.subplots(dpi = 300)
 
 ds_dem.plot(ax = ax, vmin = 0, vmax = 80)
 ax.set_title("Input DEM for case {}".format(case_id))
 
 plt.savefig(fldr_plt + '{}_dem.png'.format(case_id))
-#%% inspecting outputs
+#%% writing outputs to netcdf
 lst_tsteps = [] 
 for f in lst_f_out_h:
     lst_tsteps.append(int(f.split("H_")[-1].split(".")[0].split("_")[0]))
@@ -104,7 +104,7 @@ if output_type == "asc":
         ds.to_netcdf(fldr_temp_netcdfs + "{}_h.nc".format(tstep), encoding= {"H":{"zlib":True}})
 
     # lst_ds_h.append(ds)
-#%%
+
 # ds_h = xr.concat(lst_ds_h, dim ="timestep")
 ds_h = xr.open_mfdataset(fldr_temp_netcdfs + "{}_h.nc".format("*"))
 # ds_h = ds_h.assign_coords(timestep = ds_h.timestep.values)
@@ -117,61 +117,11 @@ print("exporting netcdf...")
 # ds_h_loaded.to_netcdf("{}_h.nc".format(case_id))
 ds_h.to_netcdf("{}_h.nc".format(case_id), encoding= {"H":{"zlib":True}})
 
-#%% generate animated visualization of ds_h
-# https://climate-cms.org/posts/2019-09-03-python-animation.html
-# ds_h = rxr.open_rasterio("{}_h.nc".format(case_id))
-ds_h = xr.open_dataset("{}_h.nc".format(case_id), chunks = dict(timestep = "100MB"))
 try:
     shutil.rmtree(fldr_temp_netcdfs)
 except:
     pass
-from matplotlib import pyplot as plt, animation
-from IPython.display import HTML, display
 
-# test
-
-p = Path(fldr_plt)
-p.mkdir(parents=True, exist_ok=True)
-
-# for i in range(50,55):
-#     ds_h.H.isel(dict(timestep = i)).plot(figsize=(12,6))
-#     plt.savefig(fldr_plt + "{}_animation_frame{}".format(case_id, i), dpi = 300)
-#     # plt.show()
-#     plt.close()
-# end test
-#%% 
-fig, ax = plt.subplots(figsize=(12,6))
-
-cax = ds_h.H.isel(dict(timestep = 0)).plot(
-    add_colorbar=True,
-    cmap='coolwarm',
-    vmin=np.floor(ds_h.H.min().values), vmax = np.ceil(ds_h.H.max().values),
-    zorder = 10,
-    cbar_kwargs={
-        'extend':'neither'
-    }
-)
-
-gdf_wshed.plot(ax=ax, edgecolor = "none", color = 'grey', alpha = 0.2, zorder = 1)
-
-def animate(frame):
-    cax.set_array(ds_h.H.sel(dict(timestep = frame)).values.flatten())
-    ax.set_title("timestep = " + str(frame))
-
-ani = animation.FuncAnimation(
-    fig,             # figure
-    animate,         # name of the function above
-    frames=ds_h.timestep.values.tolist(),       # Could also be iterable or list
-    interval=200     # ms between frames
-)
-
-# HTML(ani.to_jshtml())
-
-ani.save(fldr_plt + '{}_H_animation.mp4'.format(case_id))
-
-#%% trying to understand the discontinuities
-ds_h.H.isel(dict(x=300, y = 300)).plot()
-plt.savefig(fldr_plt + "{}_inspecting_timeseries_for_single_cell.png".format(case_id))
 #%% plotting maximum water level
 lst_tsteps = [] 
 for f in lst_f_out_mh:
@@ -193,7 +143,6 @@ ds_max_wlevel = df_max_wlevel.to_xarray()
 ds_max_wlevel.max_wlevel_m.attrs["units"] ="m"
 ds_max_wlevel.max_wlevel_m.attrs["long_name"] ="maximum water depth"
 
-#%%
 fig, ax = plt.subplots()
 
 ds_max_wlevel.max_wlevel_m.plot(x="x", y = "y", ax = ax, vmin=0, zorder = 10)
@@ -203,3 +152,56 @@ ds_max_wlevel.max_wlevel_m.plot(x="x", y = "y", ax = ax, vmin=0, zorder = 10)
 gdf_wshed.plot(ax=ax, edgecolor = "black", color = 'none', alpha = 0.2, zorder = 1)
 
 plt.savefig(fldr_plt + "{}_maximum_waterlevel.png".format(case_id))
+#%% generate animated visualization of ds_h
+# https://climate-cms.org/posts/2019-09-03-python-animation.html
+# ds_h = rxr.open_rasterio("{}_h.nc".format(case_id))
+import time
+
+start_time = time.time()
+# print("opening netcdf of outputs")
+ds_h = xr.open_dataset("{}_h.nc".format(case_id), chunks = dict(timestep = 1))
+# print("time: {}".format(round(time.time() - start_time, 2)))
+
+from matplotlib import pyplot as plt, animation
+
+p = Path(fldr_plt)
+p.mkdir(parents=True, exist_ok=True)
+
+fig, ax = plt.subplots(figsize=(12,6))
+
+# print("computing colorbar limits")
+vmax = df_max_wlevel.max().values
+vmin = 0
+
+# print("creating cax...")
+first_tstep_loaded = ds_h.H.isel(dict(timestep = 0)).load()
+cax = first_tstep_loaded.plot(
+    add_colorbar=True,
+    cmap='coolwarm',
+    vmin = vmin, vmax = vmax,
+    zorder = 10,
+    cbar_kwargs={
+        'extend':'neither'
+    }
+)
+# print("time: {}".format(round(time.time() - start_time, 2)))
+
+# print("plotting watershed")
+gdf_wshed.plot(ax=ax, edgecolor = "none", color = 'grey', alpha = 0.2, zorder = 1)
+print("time: {}".format(round(time.time() - start_time, 2)))
+def animate(frame):
+    cax.set_array(ds_h.H.sel(dict(timestep = frame)).values.flatten())
+    ax.set_title("timestep = " + str(frame))
+# print("time: {}".format(round(time.time() - start_time, 2)))
+# print('creating the animation...')
+ani = animation.FuncAnimation(
+    fig,             # figure
+    animate,         # name of the function above
+    frames=ds_h.timestep.values.tolist(),       # Could also be iterable or list
+    interval=200     # ms between frames
+)
+# print("time: {}".format(round(time.time() - start_time, 2)))
+# HTML(ani.to_jshtml())
+print('exporting the animation. This can take around 45 minutes.')
+ani.save(fldr_plt + '{}_H_animation.gif'.format(case_id), writer = animation.PillowWriter(fps=5)) #, writer=animation.FFMpegWriter(fps=8))
+print("time: {}".format(round(time.time() - start_time, 2)))
